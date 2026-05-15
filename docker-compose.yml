@@ -61,4 +61,4 @@ services:
 volumes:
   mysql_data:
   fleet_alerts_data:
-root@az-internal-tools-2:~/fleet# 
+
