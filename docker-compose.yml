@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fleet-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: fleetroot
+      MYSQL_DATABASE: fleet
+      MYSQL_USER: fleet
+      MYSQL_PASSWORD: fleetpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+
+  redis:
+    image: redis:7
+    container_name: fleet-redis
+    restart: always
+
+  fleet:
+    image: fleetdm/fleet:latest
+    container_name: fleet
+    depends_on:
+      - mysql
+      - redis
+    ports:
+      - "8080:8080"
+    volumes:
+      - /opt/fleet-secrets:/secrets:ro
+    environment:
+      FLEET_MYSQL_ADDRESS: mysql:3306
+      FLEET_MYSQL_DATABASE: fleet
+      FLEET_MYSQL_USERNAME: fleet
+      FLEET_MYSQL_PASSWORD: fleetpass
+      FLEET_REDIS_ADDRESS: redis:6379
+      FLEET_SERVER_ADDRESS: 0.0.0.0:8080
+      FLEET_LOGGING_JSON: "true"
+      FLEET_SERVER_TLS: "false"
+      FLEET_SERVER_PRIVATE_KEY: "********************"
+      FLEET_MDM_WINDOWS_WSTEP_IDENTITY_CERT: /secrets/fleet-mdm-win-wstep.cert
+      FLEET_MDM_WINDOWS_WSTEP_IDENTITY_KEY: /secrets/fleet-mdm-win-wstep.key
+
+    command: sh -c "fleet prepare db && fleet serve"
+    restart: unless-stopped
+
+  fleet-alerts:
+    build: ./fleet-alerts
+    container_name: fleet-alerts
+    restart: unless-stopped
+    environment:
+      FLEET_URL: "http://fleet:8080"
+      FLEET_API_TOKEN: "${FLEET_API_TOKEN}"
+      SLACK_WEBHOOK: "${SLACK_WEBHOOK}"
+      INTERVAL_SECONDS: "86400"
+    volumes:
+      - fleet_alerts_data:/data
+
+
+volumes:
+  mysql_data:
+  fleet_alerts_data:
+root@az-internal-tools-2:~/fleet# 
